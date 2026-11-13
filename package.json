@@ -1,0 +1,15 @@
+{
+  "name": "sugu-web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SUGU — marketplace de gros avec catalogue, panier, KYC et vérification par code.",
+  "type": "module",
+  "scripts": {
+    "start": "node server/index.mjs",
+    "dev": "node --watch server/index.mjs",
+    "smoke": "node server/smoke-test.mjs"
+  },
+  "engines": {
+    "node": ">=22.5"
+  }
+}
