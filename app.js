@@ -315,7 +315,8 @@ function renderProducts() {
     )
     .join('');
 
-  $('resultCount').textContent = `${list.length} produit${list.length > 1 ? 's' : ''} disponible${list.length > 1 ? 's' : ''}`;
+  const availableCount = list.filter((product) => product.available).length;
+  $('resultCount').textContent = `${list.length} produit${list.length > 1 ? 's' : ''} · ${availableCount} disponible${availableCount > 1 ? 's' : ''}`;
   $('productGrid').classList.toggle('hidden', list.length === 0);
   $('emptyState').classList.toggle('hidden', list.length > 0);
   if (window.lucide) lucide.createIcons();
@@ -994,7 +995,10 @@ function renderKycForm() {
                   </div>
                   <button type="button" class="inline-link" data-action="kyc-otp-send">Renvoyer le code</button>`
                : `<p>Un code à 6 chiffres protège l’envoi de vos documents.</p>
-                  <button type="button" class="btn btn-dark full" data-action="kyc-otp-send"><i data-lucide="message-circle"></i> Recevoir le code par WhatsApp</button>`
+                  <div class="otp-channels">
+                    <button type="button" class="otp-channel active" data-action="kyc-otp-send" data-channel="whatsapp"><i data-lucide="message-circle"></i> WhatsApp</button>
+                    <button type="button" class="otp-channel" data-action="kyc-otp-send" data-channel="sms"><i data-lucide="smartphone"></i> SMS</button>
+                  </div>`
          }
        </div>
        <p class="form-error hidden" id="kycError"></p>
@@ -1004,19 +1008,21 @@ function renderKycForm() {
   );
 }
 
-async function sendKycCode() {
+async function sendKycCode(channel) {
   if (!currentUser) return;
   syncKycDraft();
+  const selected = channel || kycDraft.channel || 'whatsapp';
   try {
     const result = await api('/api/auth/code/request', {
       method: 'POST',
       auth: false,
-      body: { phone: currentUser.phone, channel: 'whatsapp', purpose: 'kyc' },
+      body: { phone: currentUser.phone, channel: selected, purpose: 'kyc' },
     });
     kycDraft.otpSent = true;
     kycDraft.debugCode = result.debugCode;
+    kycDraft.channel = selected;
     renderKycForm();
-    toast('Code envoyé par WhatsApp.');
+    toast(`Code envoyé par ${selected === 'sms' ? 'SMS' : 'WhatsApp'}.`);
   } catch (error) {
     toast(error.message, 'error');
   }
@@ -1057,7 +1063,7 @@ async function submitKyc() {
   if (!kycDraft.front) problems.push('Ajoutez le recto de la pièce.');
   if (!kycDraft.back) problems.push('Ajoutez le verso de la pièce.');
   if (!kycDraft.selfie) problems.push('Prenez un selfie instantané.');
-  if (!kycDraft.verificationToken) problems.push('Validez le code reçu par WhatsApp.');
+  if (!kycDraft.verificationToken) problems.push('Validez le code reçu par WhatsApp ou par SMS.');
 
   if (problems.length > 0) {
     error.textContent = problems[0];
@@ -1658,7 +1664,7 @@ async function onModalClick(event) {
       else renderKycForm();
       break;
     case 'kyc-otp-send':
-      await sendKycCode();
+      await sendKycCode(trigger.dataset.channel);
       break;
     case 'kyc-otp-verify':
       await verifyKycCode();
